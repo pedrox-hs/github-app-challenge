@@ -44,7 +44,9 @@ class RepositoriesViewModelTest {
     @Mock
     private lateinit var loadMoreRepositories: LoadMoreRepositories
     @Mock
-    private lateinit var observer: Observer<DataState>
+    private lateinit var stateObserver: Observer<DataState>
+    @Mock
+    private lateinit var pageObserver: Observer<Int>
 
     @Before
     fun setUp() {
@@ -59,33 +61,72 @@ class RepositoriesViewModelTest {
     }
 
     @Test
-    fun `should list repositories once`() {
+    fun `should list repositories`() {
         runBlocking {
+            // Arrange
             val content = listOf(
                 Repository(
                     "repository", "user/repository",
                     "description", 1, 1, User("", "")
                 )
             )
+            val data = content.map { RepositoryModelHolder(it) }
+
             `when`(listRepositories.invoke())
                 .thenReturn(PaginatedData(1, content))
 
-            viewModel.state.observeForever(observer)
-            assertEquals(viewModel.page, 0)
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
+
+            // Act
             viewModel.load()
-            assertEquals(viewModel.page, 1)
 
-            val data = content.map { RepositoryModelHolder(it) }
+            // Assert
+            verify(pageObserver).onChanged(0)
+            verify(pageObserver).onChanged(1)
 
-            verify(observer).onChanged(DataState.Pending)
-            verify(observer).onChanged(DataState.Loaded(data))
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Loaded(data))
 
             verify(listRepositories).invoke()
 
+            verifyNoMoreInteractions(stateObserver, pageObserver, listRepositories)
+            verifyZeroInteractions(loadMoreRepositories)
+        }
+    }
+
+    @Test
+    fun `should list repositories once`() {
+        runBlocking {
+            // Arrange
+            val content = listOf(
+                Repository(
+                    "repository", "user/repository",
+                    "description", 1, 1, User("", "")
+                )
+            )
+            val data = content.map { RepositoryModelHolder(it) }
+
+            `when`(listRepositories.invoke())
+                .thenReturn(PaginatedData(1, content))
+
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
+
+            // Act
+            viewModel.load()
             viewModel.load()
 
-            verifyNoMoreInteractions(observer)
-            verifyNoMoreInteractions(listRepositories)
+            // Assert
+            verify(listRepositories).invoke()
+
+            verify(pageObserver).onChanged(0)
+            verify(pageObserver).onChanged(1)
+
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Loaded(data))
+
+            verifyNoMoreInteractions(stateObserver, pageObserver, listRepositories)
             verifyZeroInteractions(loadMoreRepositories)
         }
     }
@@ -93,6 +134,7 @@ class RepositoriesViewModelTest {
     @Test
     fun `should load more repositories`() {
         runBlocking {
+            // Arrange
             val repository1 = RepositoryModelHolder(
                 Repository(
                     "repository1", "user1/repository1",
@@ -108,55 +150,74 @@ class RepositoriesViewModelTest {
 
             `when`(listRepositories.invoke())
                 .thenReturn(PaginatedData(1, listOf(repository1.repo)))
-
             `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(1)))
                 .thenReturn(PaginatedData(2, listOf(repository2.repo)))
 
-            viewModel.state.observeForever(observer)
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
 
+            // Act
             viewModel.load()
-
-            verify(observer, times(2)).onChanged(any(DataState::class.java))
-            verify(listRepositories).invoke()
-            assertEquals(viewModel.page, 1)
-
             viewModel.loadMore()
 
-            assertEquals(viewModel.page, 2)
-            verify(observer).onChanged(DataState.NextPending(listOf(repository1)))
-            verify(observer).onChanged(DataState.Loaded(listOf(repository1, repository2)))
+            // Assert
+            verify(listRepositories).invoke()
             verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
 
-            verifyNoMoreInteractions(observer)
-            verifyNoMoreInteractions(listRepositories)
-            verifyNoMoreInteractions(loadMoreRepositories)
+            verify(pageObserver).onChanged(0)
+            verify(pageObserver).onChanged(1)
+            verify(pageObserver).onChanged(2)
+
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1)))
+
+            verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1)))
+            verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1, repository2)))
+
+            verifyNoMoreInteractions(
+                stateObserver,
+                pageObserver,
+                listRepositories,
+                loadMoreRepositories
+            )
         }
     }
 
     @Test
     fun `should fail when try to load repositories`() {
         runBlocking {
+            // Arrange
             val exception = Exception("error!")
             `when`(listRepositories.invoke())
                 .thenThrow(exception)
 
-            viewModel.state.observeForever(observer)
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
+
+            // Act
             viewModel.load()
 
-            verify(observer).onChanged(DataState.Pending)
-            verify(observer).onChanged(DataState.Failed(exception))
+            // Assert
             verify(listRepositories).invoke()
-            assertEquals(viewModel.page, 0)
 
-            verifyNoMoreInteractions(observer)
-            verifyNoMoreInteractions(listRepositories)
-            verifyNoMoreInteractions(loadMoreRepositories)
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Failed(exception))
+
+            verify(pageObserver).onChanged(0)
+
+            verifyNoMoreInteractions(
+                stateObserver,
+                pageObserver,
+                listRepositories,
+                loadMoreRepositories
+            )
         }
     }
 
     @Test
     fun `should fail when try to load more repositories`() {
         runBlocking {
+            // Arrange
             val repository1 = RepositoryModelHolder(
                 Repository(
                     "repository1", "user1/repository1",
@@ -171,42 +232,57 @@ class RepositoriesViewModelTest {
             `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(1)))
                 .thenThrow(exception)
 
-            viewModel.state.observeForever(observer)
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
+
+            // Act
             viewModel.load()
-
-            verify(observer, times(2)).onChanged(any(DataState::class.java))
-            verify(listRepositories).invoke()
-
             viewModel.loadMore()
 
-            verify(observer).onChanged(any(DataState.NextPending::class.java))
-            verify(observer).onChanged(DataState.NextFailed(exception, listOf(repository1)))
+            // Assert
+            verify(listRepositories).invoke()
             verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
-            assertEquals(viewModel.page, 1)
 
-            verifyNoMoreInteractions(observer)
-            verifyNoMoreInteractions(listRepositories)
-            verifyNoMoreInteractions(loadMoreRepositories)
+            verify(pageObserver).onChanged(0)
+            verify(pageObserver).onChanged(1)
+
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1)))
+            verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1)))
+            verify(stateObserver).onChanged(DataState.NextFailed(exception, listOf(repository1)))
+
+            verifyNoMoreInteractions(
+                stateObserver,
+                pageObserver,
+                listRepositories,
+                loadMoreRepositories
+            )
         }
     }
 
     @Test
     fun `should return empty repositories`() {
         runBlocking {
+            // Arrange
             val exception = EmptyResultException()
             `when`(listRepositories.invoke())
                 .thenThrow(exception)
 
-            viewModel.state.observeForever(observer)
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
+
+            // Act
             viewModel.load()
 
-            assertEquals(viewModel.page, 0)
-            verify(observer).onChanged(DataState.Pending)
-            verify(observer).onChanged(DataState.Empty)
+            // Assert
             verify(listRepositories).invoke()
 
-            verifyNoMoreInteractions(observer)
-            verifyNoMoreInteractions(listRepositories)
+            verify(pageObserver).onChanged(0)
+
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Empty)
+
+            verifyNoMoreInteractions(stateObserver, pageObserver, listRepositories)
             verifyZeroInteractions(loadMoreRepositories)
         }
     }
@@ -214,6 +290,7 @@ class RepositoriesViewModelTest {
     @Test
     fun `should reach the end of repository list`() {
         runBlocking {
+            // Arrange
             val repository1 = RepositoryModelHolder(
                 Repository(
                     "repository1", "user1/repository1",
@@ -237,28 +314,38 @@ class RepositoriesViewModelTest {
             `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(2)))
                 .thenThrow(exception)
 
-            viewModel.state.observeForever(observer)
+            viewModel.state.observeForever(stateObserver)
+            viewModel.page.observeForever(pageObserver)
+
+            // Act
             viewModel.load()
             viewModel.loadMore()
-
-            verify(observer).onChanged(DataState.Pending)
-            verify(observer).onChanged(any(DataState.NextPending::class.java))
-            verify(observer, times(2)).onChanged(any(DataState.Loaded::class.java))
-            verifyNoMoreInteractions(observer)
-
-            verify(listRepositories).invoke()
-            verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
-
             viewModel.loadMore()
 
-            verify(observer, times(2)).onChanged(any(DataState.NextPending::class.java))
-            verify(observer).onChanged(DataState.Completed(listOf(repository1, repository2)))
+            // Assert
+            verify(listRepositories).invoke()
+            verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
             verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(2))
-            assertEquals(viewModel.page, 2)
 
-            verifyNoMoreInteractions(observer)
-            verifyNoMoreInteractions(listRepositories)
-            verifyNoMoreInteractions(loadMoreRepositories)
+            verify(pageObserver).onChanged(0)
+            verify(pageObserver).onChanged(1)
+            verify(pageObserver).onChanged(2)
+
+            verify(stateObserver).onChanged(DataState.Pending)
+            verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1)))
+
+            verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1)))
+            verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1, repository2)))
+
+            verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1, repository2)))
+            verify(stateObserver).onChanged(DataState.Completed(listOf(repository1, repository2)))
+
+            verifyNoMoreInteractions(
+                stateObserver,
+                pageObserver,
+                listRepositories,
+                loadMoreRepositories
+            )
         }
     }
 }

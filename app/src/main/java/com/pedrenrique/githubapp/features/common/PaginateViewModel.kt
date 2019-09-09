@@ -7,11 +7,11 @@ import com.pedrenrique.githubapp.core.data.PaginatedData
 import com.pedrenrique.githubapp.core.exceptions.EmptyResultException
 import com.pedrenrique.githubapp.core.exceptions.NoMoreResultException
 import com.pedrenrique.githubapp.features.common.adapter.ModelHolder
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 abstract class PaginateViewModel<T> : ViewModel() {
-    var page = 0
-        private set
+    var page = MutableLiveData<Int>().apply { value = 0 }
     val state = MutableLiveData<DataState>()
 
     abstract fun transformData(data: T): ModelHolder
@@ -32,7 +32,7 @@ abstract class PaginateViewModel<T> : ViewModel() {
         if (data != null) {
             state.value = DataState.NextPending(data)
             retrieveData(data) {
-                requestData(page)
+                requestData(page.value!!)
             }
         }
     }
@@ -63,7 +63,12 @@ abstract class PaginateViewModel<T> : ViewModel() {
         data.addAll(result.content.map {
             transformData(it)
         })
-        page = result.page
+        page.value = result.page
         return DataState.Loaded(data.toList())
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        viewModelScope.cancel()
     }
 }

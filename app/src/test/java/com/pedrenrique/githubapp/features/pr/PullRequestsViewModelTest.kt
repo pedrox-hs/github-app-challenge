@@ -6,8 +6,7 @@ import com.pedrenrique.githubapp.core.data.PaginatedData
 import com.pedrenrique.githubapp.core.data.PullRequest
 import com.pedrenrique.githubapp.core.data.Repository
 import com.pedrenrique.githubapp.core.data.User
-import com.pedrenrique.githubapp.core.domain.ListPRFromRepository
-import com.pedrenrique.githubapp.core.domain.LoadMorePRFromRepository
+import com.pedrenrique.githubapp.core.domain.LoadPRFromRepository
 import com.pedrenrique.githubapp.core.exceptions.EmptyResultException
 import com.pedrenrique.githubapp.core.exceptions.NoMoreResultException
 import com.pedrenrique.githubapp.features.common.DataState
@@ -44,13 +43,13 @@ class PullRequestsViewModelTest {
     @Mock
     private lateinit var listPRFromRepository: ListPRFromRepository
     @Mock
-    private lateinit var loadMorePRFromRepository: LoadMorePRFromRepository
+    private lateinit var loadPRFromRepository: LoadPRFromRepository
     @Mock
     private lateinit var observer: Observer<DataState>
 
     @Before
     fun setUp() {
-        viewModel = PullRequestsViewModel(listPRFromRepository, loadMorePRFromRepository)
+        viewModel = PullRequestsViewModel(listPRFromRepository, loadPRFromRepository)
         Dispatchers.setMain(testDispatcher)
     }
 
@@ -88,7 +87,7 @@ class PullRequestsViewModelTest {
 
             verifyNoMoreInteractions(observer)
             verifyNoMoreInteractions(listPRFromRepository)
-            verifyZeroInteractions(loadMorePRFromRepository)
+            verifyZeroInteractions(loadPRFromRepository)
         }
     }
 
@@ -111,8 +110,8 @@ class PullRequestsViewModelTest {
             `when`(listPRFromRepository.invoke(listParams))
                 .thenReturn(PaginatedData(1, listOf(pr1.pr)))
 
-            val nextParams = LoadMorePRFromRepository.Params(1, repository)
-            `when`(loadMorePRFromRepository.invoke(nextParams))
+            val nextParams = LoadPRFromRepository.Params(1, repository)
+            `when`(loadPRFromRepository.invoke(nextParams))
                 .thenReturn(PaginatedData(2, listOf(pr2.pr)))
 
             viewModel.state.observeForever(observer)
@@ -127,11 +126,11 @@ class PullRequestsViewModelTest {
             assertEquals(viewModel.page, 2)
             verify(observer).onChanged(DataState.NextPending(listOf(pr1)))
             verify(observer).onChanged(DataState.Loaded(listOf(pr1, pr2)))
-            verify(loadMorePRFromRepository).invoke(nextParams)
+            verify(loadPRFromRepository).invoke(nextParams)
 
             verifyNoMoreInteractions(observer)
             verifyNoMoreInteractions(listPRFromRepository)
-            verifyNoMoreInteractions(loadMorePRFromRepository)
+            verifyNoMoreInteractions(loadPRFromRepository)
         }
     }
 
@@ -157,7 +156,7 @@ class PullRequestsViewModelTest {
 
             verifyNoMoreInteractions(observer)
             verifyNoMoreInteractions(listPRFromRepository)
-            verifyNoMoreInteractions(loadMorePRFromRepository)
+            verifyNoMoreInteractions(loadPRFromRepository)
         }
     }
 
@@ -177,8 +176,8 @@ class PullRequestsViewModelTest {
                 .thenReturn(PaginatedData(1, listOf(pullRequest.pr)))
 
             val exception = Exception("error!")
-            val nextParams = LoadMorePRFromRepository.Params(1, repository)
-            `when`(loadMorePRFromRepository.invoke(nextParams))
+            val nextParams = LoadPRFromRepository.Params(1, repository)
+            `when`(loadPRFromRepository.invoke(nextParams))
                 .thenThrow(exception)
 
             viewModel.state.observeForever(observer)
@@ -191,13 +190,13 @@ class PullRequestsViewModelTest {
 
             verify(observer).onChanged(any(DataState.NextPending::class.java))
             verify(observer).onChanged(DataState.NextFailed(exception, listOf(pullRequest)))
-            verify(loadMorePRFromRepository)
+            verify(loadPRFromRepository)
                 .invoke(nextParams)
             assertEquals(viewModel.page, 1)
 
             verifyNoMoreInteractions(observer)
             verifyNoMoreInteractions(listPRFromRepository)
-            verifyNoMoreInteractions(loadMorePRFromRepository)
+            verifyNoMoreInteractions(loadPRFromRepository)
         }
     }
 
@@ -224,7 +223,7 @@ class PullRequestsViewModelTest {
 
             verifyNoMoreInteractions(observer)
             verifyNoMoreInteractions(listPRFromRepository)
-            verifyZeroInteractions(loadMorePRFromRepository)
+            verifyZeroInteractions(loadPRFromRepository)
         }
     }
 
@@ -247,12 +246,12 @@ class PullRequestsViewModelTest {
             `when`(listPRFromRepository.invoke(listParams))
                 .thenReturn(PaginatedData(1, listOf(pr1.pr)))
 
-            val nextParams = LoadMorePRFromRepository.Params(1, repository)
-            `when`(loadMorePRFromRepository.invoke(nextParams))
+            val nextParams = LoadPRFromRepository.Params(1, repository)
+            `when`(loadPRFromRepository.invoke(nextParams))
                 .thenReturn(PaginatedData(2, listOf(pr2.pr)))
 
             val exception = NoMoreResultException()
-            `when`(loadMorePRFromRepository.invoke(nextParams.copy(2)))
+            `when`(loadPRFromRepository.invoke(nextParams.copy(2)))
                 .thenThrow(exception)
 
             viewModel.state.observeForever(observer)
@@ -266,7 +265,7 @@ class PullRequestsViewModelTest {
             verifyNoMoreInteractions(observer)
 
             verify(listPRFromRepository).invoke(listParams)
-            verify(loadMorePRFromRepository).invoke(nextParams)
+            verify(loadPRFromRepository).invoke(nextParams)
 
             viewModel.loadMore(repository)
 
@@ -274,12 +273,12 @@ class PullRequestsViewModelTest {
                 .onChanged(any(DataState.NextPending::class.java))
             verify(observer)
                 .onChanged(DataState.Completed(listOf(pr1, pr2)))
-            verify(loadMorePRFromRepository).invoke(nextParams.copy(2))
+            verify(loadPRFromRepository).invoke(nextParams.copy(2))
             assertEquals(viewModel.page, 2)
 
             verifyNoMoreInteractions(observer)
             verifyNoMoreInteractions(listPRFromRepository)
-            verifyNoMoreInteractions(loadMorePRFromRepository)
+            verifyNoMoreInteractions(loadPRFromRepository)
         }
     }
 }

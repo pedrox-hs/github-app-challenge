@@ -5,13 +5,11 @@ import androidx.lifecycle.Observer
 import com.pedrenrique.githubapp.core.data.PaginatedData
 import com.pedrenrique.githubapp.core.data.Repository
 import com.pedrenrique.githubapp.core.data.User
-import com.pedrenrique.githubapp.core.domain.ListRepositories
-import com.pedrenrique.githubapp.core.domain.LoadMoreRepositories
+import com.pedrenrique.githubapp.core.domain.LoadRepositories
 import com.pedrenrique.githubapp.core.exceptions.EmptyResultException
 import com.pedrenrique.githubapp.core.exceptions.NoMoreResultException
 import com.pedrenrique.githubapp.features.common.DataState
 import com.pedrenrique.githubapp.features.common.adapter.model.RepositoryModelHolder
-import junit.framework.Assert.assertEquals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -42,7 +40,7 @@ class RepositoriesViewModelTest {
     @Mock
     private lateinit var listRepositories: ListRepositories
     @Mock
-    private lateinit var loadMoreRepositories: LoadMoreRepositories
+    private lateinit var loadMoreRepositories: LoadRepositories
     @Mock
     private lateinit var stateObserver: Observer<DataState>
     @Mock
@@ -97,38 +95,31 @@ class RepositoriesViewModelTest {
 
     @Test
     fun `should list repositories once`() {
-        runBlocking {
-            // Arrange
-            val content = listOf(
-                Repository(
-                    "repository", "user/repository",
-                    "description", 1, 1, User("", "")
-                )
+        // Arrange
+        val content = listOf(
+            Repository(
+                "repository", "user/repository",
+                "description", 1, 1, User("", "")
             )
-            val data = content.map { RepositoryModelHolder(it) }
+        )
+        val data = content.map { RepositoryModelHolder(it) }
 
-            `when`(listRepositories.invoke())
-                .thenReturn(PaginatedData(1, content))
+        viewModel.state.value = DataState.Loaded(data)
+        viewModel.page.value = 1
 
-            viewModel.state.observeForever(stateObserver)
-            viewModel.page.observeForever(pageObserver)
+        viewModel.state.observeForever(stateObserver)
+        viewModel.page.observeForever(pageObserver)
 
-            // Act
-            viewModel.load()
-            viewModel.load()
+        // Act
+        viewModel.load()
 
-            // Assert
-            verify(listRepositories).invoke()
+        // Assert
+        verify(pageObserver).onChanged(1)
 
-            verify(pageObserver).onChanged(0)
-            verify(pageObserver).onChanged(1)
+        verify(stateObserver).onChanged(DataState.Loaded(data))
 
-            verify(stateObserver).onChanged(DataState.Pending)
-            verify(stateObserver).onChanged(DataState.Loaded(data))
-
-            verifyNoMoreInteractions(stateObserver, pageObserver, listRepositories)
-            verifyZeroInteractions(loadMoreRepositories)
-        }
+        verifyNoMoreInteractions(stateObserver, pageObserver)
+        verifyZeroInteractions(listRepositories, loadMoreRepositories)
     }
 
     @Test
@@ -148,27 +139,24 @@ class RepositoriesViewModelTest {
                 )
             )
 
-            `when`(listRepositories.invoke())
-                .thenReturn(PaginatedData(1, listOf(repository1.repo)))
-            `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(1)))
+            `when`(loadMoreRepositories.invoke(LoadRepositories.Params(1)))
                 .thenReturn(PaginatedData(2, listOf(repository2.repo)))
+
+            viewModel.state.value = DataState.Loaded(listOf(repository1))
+            viewModel.page.value = 1
 
             viewModel.state.observeForever(stateObserver)
             viewModel.page.observeForever(pageObserver)
 
             // Act
-            viewModel.load()
             viewModel.loadMore()
 
             // Assert
-            verify(listRepositories).invoke()
-            verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
+            verify(loadMoreRepositories).invoke(LoadRepositories.Params(1))
 
-            verify(pageObserver).onChanged(0)
             verify(pageObserver).onChanged(1)
             verify(pageObserver).onChanged(2)
 
-            verify(stateObserver).onChanged(DataState.Pending)
             verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1)))
 
             verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1)))
@@ -177,9 +165,9 @@ class RepositoriesViewModelTest {
             verifyNoMoreInteractions(
                 stateObserver,
                 pageObserver,
-                listRepositories,
                 loadMoreRepositories
             )
+            verifyZeroInteractions(listRepositories)
         }
     }
 
@@ -225,28 +213,24 @@ class RepositoriesViewModelTest {
                 )
             )
 
-            `when`(listRepositories.invoke())
-                .thenReturn(PaginatedData(1, listOf(repository1.repo)))
-
             val exception = Exception("error!")
-            `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(1)))
+            `when`(loadMoreRepositories.invoke(LoadRepositories.Params(1)))
                 .thenThrow(exception)
+
+            viewModel.state.value = DataState.Loaded(listOf(repository1))
+            viewModel.page.value = 1
 
             viewModel.state.observeForever(stateObserver)
             viewModel.page.observeForever(pageObserver)
 
             // Act
-            viewModel.load()
             viewModel.loadMore()
 
             // Assert
-            verify(listRepositories).invoke()
-            verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
+            verify(loadMoreRepositories).invoke(LoadRepositories.Params(1))
 
-            verify(pageObserver).onChanged(0)
             verify(pageObserver).onChanged(1)
 
-            verify(stateObserver).onChanged(DataState.Pending)
             verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1)))
             verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1)))
             verify(stateObserver).onChanged(DataState.NextFailed(exception, listOf(repository1)))
@@ -254,9 +238,9 @@ class RepositoriesViewModelTest {
             verifyNoMoreInteractions(
                 stateObserver,
                 pageObserver,
-                listRepositories,
                 loadMoreRepositories
             )
+            verifyZeroInteractions(listRepositories)
         }
     }
 
@@ -304,37 +288,23 @@ class RepositoriesViewModelTest {
                 )
             )
 
-            `when`(listRepositories.invoke())
-                .thenReturn(PaginatedData(1, listOf(repository1.repo)))
-
-            `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(1)))
-                .thenReturn(PaginatedData(2, listOf(repository2.repo)))
-
             val exception = NoMoreResultException()
-            `when`(loadMoreRepositories.invoke(LoadMoreRepositories.Params(2)))
+            `when`(loadMoreRepositories.invoke(LoadRepositories.Params(2)))
                 .thenThrow(exception)
+
+            viewModel.state.value =
 
             viewModel.state.observeForever(stateObserver)
             viewModel.page.observeForever(pageObserver)
 
             // Act
-            viewModel.load()
-            viewModel.loadMore()
             viewModel.loadMore()
 
             // Assert
-            verify(listRepositories).invoke()
-            verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(1))
-            verify(loadMoreRepositories).invoke(LoadMoreRepositories.Params(2))
+            verify(loadMoreRepositories).invoke(LoadRepositories.Params(1))
 
-            verify(pageObserver).onChanged(0)
             verify(pageObserver).onChanged(1)
-            verify(pageObserver).onChanged(2)
 
-            verify(stateObserver).onChanged(DataState.Pending)
-            verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1)))
-
-            verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1)))
             verify(stateObserver).onChanged(DataState.Loaded(listOf(repository1, repository2)))
 
             verify(stateObserver).onChanged(DataState.NextPending(listOf(repository1, repository2)))

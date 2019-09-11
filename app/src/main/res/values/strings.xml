@@ -1,13 +1,14 @@
 <resources>
     <string name="app_name" translatable="false">Github Java Pop</string>
+
     <string name="title_repositories">@string/app_name</string>
     <string name="title_pull_requests">Pull Requests</string>
-
     <string name="text_pull_request_info">#%1$d opened at %2$s\nby %3$s</string>
     <string name="text_item_without_description"><i>No description provided.</i></string>
     <string name="description_pull_requests_empty">There aren’t any open pull requests.</string>
     <string name="title_pull_requests_empty">Everything is quiet here</string>
     <string name="action_back">Go back</string>
+
     <string name="action_try_again">Try again</string>
     <string name="action_load_more">Load more</string>
 
@@ -16,4 +17,15 @@
 
     <string name="title_error_unexpected">Oops.. something went wrong</string>
     <string name="msg_error_unexpected">Please try again later.</string>
+
+    <plurals name="text_forks_description">
+        <item quantity="one">%d fork</item>
+        <item quantity="other">%d forks</item>
+    </plurals>
+
+    <plurals name="text_stars_description">
+        <item quantity="one">%d star</item>
+        <item quantity="other">%d stars</item>
+    </plurals>
+
 </resources>

@@ -28,8 +28,20 @@ class RepositoryViewHolder(view: View) : BaseViewHolder<RepositoryModelHolder>(v
             ?: context.getText(R.string.text_item_without_description)
 
         val numberFormat = NumberFormat.getInstance(Locale.getDefault())
+
         tvFork.text = numberFormat.format(repo.forksCount)
+        tvFork.contentDescription = resources.getQuantityString(
+            R.plurals.text_forks_description,
+            repo.forksCount,
+            repo.forksCount
+        )
+
         tvStars.text = numberFormat.format(repo.stargazersCount)
+        tvStars.contentDescription = resources.getQuantityString(
+            R.plurals.text_stars_description,
+            repo.stargazersCount,
+            repo.stargazersCount
+        )
 
         ivOwner.setRemoteImage(repo.owner.avatarUrl) {
             error(R.drawable.ic_person)

@@ -16,4 +16,14 @@
 
     <string name="title_error_unexpected">Oops.. algo deu errado</string>
     <string name="msg_error_unexpected">Por favor, tente novamente mais tarde.</string>
+
+    <plurals name="text_forks_description">
+        <item quantity="one">%d fork</item>
+        <item quantity="other">%d forks</item>
+    </plurals>
+
+    <plurals name="text_stars_description">
+        <item quantity="one">%d estrela</item>
+        <item quantity="other">%d estrelas</item>
+    </plurals>
 </resources>

@@ -11,14 +11,6 @@
     android:paddingEnd="16dp"
     android:paddingBottom="8dp">
 
-    <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/ivOwner"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:src="@drawable/ic_person" />
-
     <TextView
         android:id="@+id/tvRepoName"
         style="@style/AppTheme.Text.Title"
@@ -47,7 +39,16 @@
         app:layout_constraintTop_toBottomOf="@id/tvRepoName"
         tools:text="Mussum Ipsum, cacilds vidis litro abertis. Suco de cevadiss deixa as pessoas mais interessantis. Nec orci ornare consequat. Praesent lacinia ultrices consectetur. Sed non ipsum felis. Aenean aliquam molestie leo, vitae iaculis nisl. Interagi no mé, cursus quis, vehicula ac nisi. " />
 
-    <TextView
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/ivOwner"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:importantForAccessibility="no"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:src="@drawable/ic_person" />
+
+    <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/tvFork"
         style="@style/AppTheme.Text.Caption"
         android:layout_width="wrap_content"
@@ -56,7 +57,9 @@
         android:layout_marginBottom="8dp"
         android:drawableStart="@drawable/ic_fork"
         android:drawablePadding="4dp"
+        android:focusable="true"
         android:gravity="center_vertical"
+        android:importantForAccessibility="yes"
         android:minWidth="60sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvDescription"
@@ -70,7 +73,9 @@
         android:layout_marginStart="16dp"
         android:drawableStart="@drawable/ic_star"
         android:drawablePadding="4dp"
+        android:focusable="true"
         android:gravity="center_vertical"
+        android:importantForAccessibility="yes"
         app:layout_constraintBottom_toBottomOf="@id/tvFork"
         app:layout_constraintStart_toEndOf="@id/tvFork"
         app:layout_constraintTop_toTopOf="@id/tvFork"

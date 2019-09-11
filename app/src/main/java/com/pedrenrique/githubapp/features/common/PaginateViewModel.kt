@@ -5,35 +5,39 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pedrenrique.githubapp.core.data.PaginatedData
 import com.pedrenrique.githubapp.core.exceptions.EmptyResultException
+import com.pedrenrique.githubapp.core.exceptions.InvalidPageException
 import com.pedrenrique.githubapp.core.exceptions.NoMoreResultException
 import com.pedrenrique.githubapp.features.common.adapter.ModelHolder
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 abstract class PaginateViewModel<T> : ViewModel() {
-    var page = MutableLiveData<Int>().apply { value = 0 }
     val state = MutableLiveData<DataState>()
+    var page = 0
+        private set
 
-    abstract fun transformData(data: T): ModelHolder
+    fun setInitialState(state: DataState, page: Int = 0) {
+        this.state.value = state
+        this.page = page
+    }
+
+    protected abstract fun transformData(data: T): ModelHolder
 
     protected fun loadIfNeeded(requestData: suspend () -> PaginatedData<T>) {
-        val value = state.value
-        if (value == null || value is DataState.Failed) {
-            state.value = DataState.Pending
-            retrieveData {
-                requestData()
-            }
+        retrieveData {
+            state.postValue(DataState.Pending)
+            requestData()
         }
     }
 
     protected fun loadMoreIfNeeded(requestData: suspend (page: Int) -> PaginatedData<T>) {
         val value = state.value
         val data = (value as? DataState.Loaded)?.data ?: (value as? DataState.NextFailed)?.lastData
-        if (data != null) {
-            state.value = DataState.NextPending(data)
-            retrieveData(data) {
-                requestData(page.value!!)
-            }
+        ?: listOf()
+        retrieveData(data) {
+            state.postValue(DataState.NextPending(data))
+            requestData(page)
         }
     }
 
@@ -42,12 +46,16 @@ abstract class PaginateViewModel<T> : ViewModel() {
         provider: suspend () -> PaginatedData<T>
     ) {
         viewModelScope.launch {
+            val lastValue = state.value
             state.value = try {
-                onDataReceived(lastData, provider())
+                onDataReceived(provider())
             } catch (e: EmptyResultException) {
                 DataState.Empty
             } catch (e: NoMoreResultException) {
                 DataState.Completed(lastData ?: listOf())
+            } catch (e: InvalidPageException) {
+                e.printStackTrace()
+                lastValue
             } catch (e: Throwable) {
                 lastData?.let { DataState.NextFailed(e, it) }
                     ?: DataState.Failed(e)
@@ -56,19 +64,19 @@ abstract class PaginateViewModel<T> : ViewModel() {
     }
 
     private fun onDataReceived(
-        lastData: List<ModelHolder>?,
         result: PaginatedData<T>
     ): DataState.Loaded {
-        val data = (lastData ?: listOf()).toMutableSet()
+        val data = mutableSetOf<ModelHolder>()
         data.addAll(result.content.map {
             transformData(it)
         })
-        page.value = result.page
+        page = result.page
         return DataState.Loaded(data.toList())
     }
 
     override fun onCleared() {
         super.onCleared()
-        viewModelScope.cancel()
+        if (viewModelScope.isActive)
+            viewModelScope.cancel()
     }
 }

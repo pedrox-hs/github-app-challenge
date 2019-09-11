@@ -3,6 +3,7 @@ package com.pedrenrique.githubapp.core.data.datasource
 import com.pedrenrique.githubapp.core.data.PaginatedData
 import com.pedrenrique.githubapp.core.data.Repository
 import com.pedrenrique.githubapp.core.exceptions.EmptyResultException
+import com.pedrenrique.githubapp.core.exceptions.InvalidPageException
 import com.pedrenrique.githubapp.core.exceptions.NoMoreResultException
 import com.pedrenrique.githubapp.core.net.services.GithubService
 
@@ -36,9 +37,10 @@ interface ProjectRepository {
 
         private suspend fun <T> requestingPage(page: Int, request: suspend () -> T) =
             try {
-                if (page <= 0) error("Page must be greater than zero")
-                if (page <= data.page) error("Page must be greater than last page requested (${data.page})")
-                if (isLoadPending) error("This page load is in progress")
+                if (page <= 0) throw InvalidPageException("Page must be greater than zero")
+                if (page <= data.page) throw InvalidPageException("Page must be greater than last page requested (${data.page})")
+                if (page > data.page + 1) throw InvalidPageException("Page cannot be skipped")
+                if (isLoadPending) throw InvalidPageException("This page load is in progress")
                 isLoadPending = true
                 request()
             } finally {

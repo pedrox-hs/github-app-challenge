@@ -7,18 +7,17 @@ import com.pedrenrique.githubapp.features.common.PaginateViewModel
 import com.pedrenrique.githubapp.features.common.adapter.model.PullRequestModelHolder
 
 class PullRequestsViewModel(
-    private val listPRFromRepository: ListPRFromRepository,
     private val loadPRFromRepository: LoadPRFromRepository
 ) : PaginateViewModel<PullRequest>() {
     fun load(repository: Repository) {
         loadIfNeeded {
-            listPRFromRepository(ListPRFromRepository.Params(repository))
+            loadPRFromRepository(LoadPRFromRepository.Params(repository))
         }
     }
 
     fun loadMore(repository: Repository) {
         loadMoreIfNeeded { p ->
-            loadPRFromRepository(LoadPRFromRepository.Params(p, repository))
+            loadPRFromRepository(LoadPRFromRepository.Params(repository, p + 1))
         }
     }
 

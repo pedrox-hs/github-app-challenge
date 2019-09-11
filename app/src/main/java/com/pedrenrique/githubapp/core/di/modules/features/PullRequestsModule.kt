@@ -11,11 +11,7 @@ import org.koin.dsl.module
 val pullRequestModule = module {
     scope(named<PullRequestsFragment>()) {
         viewModel {
-            PullRequestsViewModel(get(), get())
-        }
-
-        factory {
-            ListPRFromRepository(get())
+            PullRequestsViewModel(get())
         }
 
         factory {

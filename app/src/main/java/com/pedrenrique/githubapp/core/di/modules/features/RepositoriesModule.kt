@@ -11,11 +11,11 @@ import org.koin.dsl.module
 val repositoriesModule = module {
     scope(named<RepositoriesFragment>()) {
         viewModel {
-            RepositoriesViewModel(get(), get())
+            RepositoriesViewModel(get())
         }
 
         factory {
-            ListRepositories(get())
+            LoadRepositories(get())
         }
 
         factory {
